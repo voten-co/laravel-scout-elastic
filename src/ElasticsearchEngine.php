@@ -125,17 +125,54 @@ class ElasticsearchEngine extends Engine
      */
     protected function performSearch(Builder $builder, array $options = [])
     {
+        // lets make it personal
+    	if (get_class($builder->model) == "App\User") {
+    		$body = [
+                'query' => [
+                 	'simple_query_string' => [
+		                'query' => "*{$builder->query}~",
+	                    'fields' => ['username^3', 'name']
+		            ]
+                ]
+            ];
+    	} elseif (get_class($builder->model) == "App\Category") {
+    		$body = [
+                'query' => [
+                 	'simple_query_string' => [
+		                'query' => "*{$builder->query}~",
+	                    'fields' => ['name^4', 'description']
+		            ]
+                ]
+            ];
+    	} elseif (get_class($builder->model) == "App\Submission") {
+    		$body = [
+                'query' => [
+                 	'simple_query_string' => [
+		                'query' => "*{$builder->query}~",
+	                    'fields' => ['title^3'],
+		            ]
+                ]
+            ];
+    	} elseif (get_class($builder->model) == "App\Comment") {
+    		$body = [
+                'query' => [
+                 	'simple_query_string' => [
+		                'query' => "*{$builder->query}~",
+	                    'fields' => ['body^3'],
+		            ]
+                ]
+            ];
+    	} else {
+    		$class = get_class($builder->model);
+    		throw new \Exception("No Elastic configuration has been set for class '{$class}'");
+    	}
+
         $params = [
             'index' => $this->index,
             'type' => $builder->index ?: $builder->model->searchableAs(),
-            'body' => [
-                'query' => [
-                    'bool' => [
-                        'must' => [['query_string' => [ 'query' => "*{$builder->query}*"]]]
-                    ]
-                ]
-            ]
+            'body' => $body
         ];
+        
 
         if ($sort = $this->sort($builder)) {
             $params['body']['sort'] = $sort;
